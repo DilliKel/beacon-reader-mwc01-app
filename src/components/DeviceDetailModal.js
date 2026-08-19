@@ -34,7 +34,13 @@ export default function DeviceDetailModal({
 
   if (!device) return null;
 
-  const isBusy = device.status === 'connecting' || device.status === 'reading';
+  const isReadingBattery = device.status === 'connecting' || device.status === 'reading';
+  const isReadingChar = Boolean(pendingCharRead) && pendingCharRead.startsWith(`${device.id}:`);
+  // Só existe UMA conexão BLE por vez com esse crachá — ler a bateria e ler
+  // uma characteristic avulsa não podem rolar ao mesmo tempo, nem duas
+  // characteristics entre si (foi isso que causou "Disconnect called before
+  // the command completed" quando vários "Ler" eram tocados em sequência).
+  const isBusy = isReadingBattery || isReadingChar;
   const nicknameChanged = nicknameDraft.trim() !== (device.nickname || '');
   const showNoBatteryWarning = device.status === 'done' && device.hasBatteryService === false;
 
@@ -93,7 +99,7 @@ export default function DeviceDetailModal({
                 disabled={isBusy}
                 onPress={() => onReadBattery(device.id)}
               >
-                {isBusy ? (
+                {isReadingBattery ? (
                   <ActivityIndicator size="small" color={colors.surface} />
                 ) : (
                   <Text style={styles.primaryButtonText}>
@@ -151,8 +157,8 @@ export default function DeviceDetailModal({
                             </View>
                             {canRead && (
                               <Pressable
-                                style={styles.readCharButton}
-                                disabled={isPending}
+                                style={[styles.readCharButton, isBusy && styles.readCharButtonDisabled]}
+                                disabled={isBusy}
                                 onPress={() =>
                                   onReadCharacteristic(device.id, c.service, c.characteristic)
                                 }
@@ -299,6 +305,7 @@ const styles = StyleSheet.create({
     minWidth: 40,
     alignItems: 'center',
   },
+  readCharButtonDisabled: { opacity: 0.4 },
   readCharButtonText: { color: colors.accent, fontWeight: '700', fontSize: 12 },
   secondaryButton: {
     marginTop: spacing.lg,
