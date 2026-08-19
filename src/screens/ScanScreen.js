@@ -28,6 +28,8 @@ export default function ScanScreen() {
     setFilterMode,
     startScan,
     readDeviceDetail,
+    readCharacteristic,
+    pendingCharRead,
     markAsBadge,
     renameDevice,
   } = useBleScanner();
@@ -75,6 +77,8 @@ export default function ScanScreen() {
         isKnownBadge={selectedDevice?.isKnownBadge}
         onClose={() => setSelectedId(null)}
         onReadBattery={readDeviceDetail}
+        onReadCharacteristic={readCharacteristic}
+        pendingCharRead={pendingCharRead}
         onMarkAsBadge={markAsBadge}
         onSaveNickname={renameDevice}
       />

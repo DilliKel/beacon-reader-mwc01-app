@@ -79,6 +79,7 @@ export function useBleScanner() {
                   errorMsg: existing?.errorMsg ?? null,
                   rawServices: existing?.rawServices ?? null,
                   rawCharacteristics: existing?.rawCharacteristics ?? null,
+                  rawReads: existing?.rawReads ?? {},
                 },
               };
             });
@@ -161,6 +162,47 @@ export function useBleScanner() {
     }
   }, []);
 
+  // Lê o valor bruto de UMA characteristic específica — ferramenta de
+  // exploração pra quando o crachá não segue os UUIDs padrão (caso do MWC01).
+  // Reconecta a cada chamada (a conexão já foi fechada por readDeviceDetail),
+  // então é mais lento que um read único, mas serve pra testar characteristic
+  // por characteristic até achar onde a bateria de verdade mora.
+  const [pendingCharRead, setPendingCharRead] = useState(null); // `${deviceId}:${characteristicUUID}`
+
+  const readCharacteristic = useCallback(async (deviceId, serviceUUID, characteristicUUID) => {
+    const key = `${deviceId}:${characteristicUUID}`;
+    setPendingCharRead(key);
+    try {
+      await BleManager.connect(deviceId);
+      await BleManager.retrieveServices(deviceId);
+      const bytes = await BleManager.read(deviceId, serviceUUID, characteristicUUID);
+      setDevicesById((prev) => ({
+        ...prev,
+        [deviceId]: {
+          ...prev[deviceId],
+          rawReads: {
+            ...(prev[deviceId]?.rawReads || {}),
+            [characteristicUUID]: { bytes, error: null, readAt: Date.now() },
+          },
+        },
+      }));
+    } catch (err) {
+      setDevicesById((prev) => ({
+        ...prev,
+        [deviceId]: {
+          ...prev[deviceId],
+          rawReads: {
+            ...(prev[deviceId]?.rawReads || {}),
+            [characteristicUUID]: { bytes: null, error: err?.message ?? String(err), readAt: Date.now() },
+          },
+        },
+      }));
+    } finally {
+      BleManager.disconnect(deviceId).catch(() => {});
+      setPendingCharRead(null);
+    }
+  }, []);
+
   // Marca o nome desse device como assinatura de crachá reconhecido,
   // persistindo pra próximas sessões e ligando o filtro "só crachás".
   const markAsBadge = useCallback(async (device) => {
@@ -199,6 +241,8 @@ export function useBleScanner() {
     setFilterMode,
     startScan,
     readDeviceDetail,
+    readCharacteristic,
+    pendingCharRead,
     markAsBadge,
     renameDevice,
   };
