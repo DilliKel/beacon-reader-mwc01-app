@@ -31,6 +31,7 @@ export default function ScanScreen() {
     startScan,
     readDeviceDetail,
     readCharacteristic,
+    writeCharacteristic,
     pendingCharRead,
     markAsBadge,
     renameDevice,
@@ -95,6 +96,7 @@ export default function ScanScreen() {
         onClose={() => setSelectedId(null)}
         onReadBattery={readDeviceDetail}
         onReadCharacteristic={readCharacteristic}
+        onWriteCharacteristic={writeCharacteristic}
         pendingCharRead={pendingCharRead}
         onMarkAsBadge={markAsBadge}
         onSaveNickname={renameDevice}

@@ -36,8 +36,15 @@ enquanto.
   NDEF, se tiver). Se o UID bater com um MAC já visto no scan BLE, pula direto pro
   detalhe daquele crachá — bom pra identificar fisicamente qual é qual.
 
-**Fora de escopo por enquanto:** escrever configuração / desligar remotamente,
-múltiplos usuários, backend, integração com sistemas externos.
+- **Escrita experimental em characteristic** (na tela de detalhe, botão vermelho
+  "Escrever"): permite testar hipóteses de protocolo — ex. a senha de conexão padrão
+  documentada da Minew (`minew123`) — em qualquer characteristic gravável. **Sem
+  protocolo oficial confirmado**: cada escrita pede confirmação explícita e pode alterar
+  a configuração do crachá de forma irreversível. Testar só em crachás não vinculados a
+  ninguém.
+
+**Fora de escopo por enquanto:** múltiplos usuários, backend, integração com sistemas
+externos.
 
 ## Stack
 

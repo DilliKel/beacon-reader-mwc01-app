@@ -14,6 +14,7 @@ import { formatDistance } from '../ble/distance';
 import { shortUuid } from '../ble/uuid';
 import { formatBytes } from '../ble/bytes';
 import BatteryBadge from './BatteryBadge';
+import CharacteristicRow from './CharacteristicRow';
 
 function formatUptime(seconds) {
   if (seconds === null || seconds === undefined) return null;
@@ -32,6 +33,7 @@ export default function DeviceDetailModal({
   onMarkAsBadge,
   onSaveNickname,
   onReadCharacteristic,
+  onWriteCharacteristic,
   pendingCharRead,
 }) {
   const [nicknameDraft, setNicknameDraft] = useState('');
@@ -221,48 +223,17 @@ export default function DeviceDetailModal({
                     <Text style={styles.serviceUuid}>{shortUuid(service.uuid)}</Text>
                     {(device.rawCharacteristics || [])
                       .filter((c) => c.service === service.uuid)
-                      .map((c) => {
-                        const canRead = Boolean(c.properties?.Read);
-                        const readKey = `${device.id}:${c.characteristic}`;
-                        const isPending = pendingCharRead === readKey;
-                        const result = device.rawReads?.[c.characteristic];
-                        return (
-                          <View key={c.characteristic} style={styles.charRow}>
-                            <View style={styles.charTextBlock}>
-                              <Text style={styles.charLine}>
-                                · {shortUuid(c.characteristic)}{' '}
-                                <Text style={styles.charProps}>
-                                  ({Object.keys(c.properties || {}).join(', ') || '—'})
-                                </Text>
-                              </Text>
-                              {result && !result.error && (
-                                <Text style={styles.charResult}>
-                                  hex: {formatBytes(result.bytes).hex} · dec:{' '}
-                                  {formatBytes(result.bytes).decimal}
-                                </Text>
-                              )}
-                              {result?.error && (
-                                <Text style={styles.charResultError}>{result.error}</Text>
-                              )}
-                            </View>
-                            {canRead && (
-                              <Pressable
-                                style={[styles.readCharButton, isBusy && styles.readCharButtonDisabled]}
-                                disabled={isBusy}
-                                onPress={() =>
-                                  onReadCharacteristic(device.id, c.service, c.characteristic)
-                                }
-                              >
-                                {isPending ? (
-                                  <ActivityIndicator size="small" color={colors.accent} />
-                                ) : (
-                                  <Text style={styles.readCharButtonText}>Ler</Text>
-                                )}
-                              </Pressable>
-                            )}
-                          </View>
-                        );
-                      })}
+                      .map((c) => (
+                        <CharacteristicRow
+                          key={c.characteristic}
+                          device={device}
+                          characteristic={c}
+                          isBusy={isBusy}
+                          pendingCharRead={pendingCharRead}
+                          onRead={onReadCharacteristic}
+                          onWrite={onWriteCharacteristic}
+                        />
+                      ))}
                   </View>
                 ))}
               </>
@@ -368,28 +339,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   serviceUuid: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-  charRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  charTextBlock: { flex: 1, marginRight: spacing.sm },
   charLine: { fontSize: 12, color: colors.textSecondary },
-  charProps: { color: colors.textMuted },
   charResult: { fontSize: 11, color: colors.accent, marginTop: 2 },
-  charResultError: { fontSize: 11, color: colors.danger, marginTop: 2 },
-  readCharButton: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  readCharButtonDisabled: { opacity: 0.4 },
-  readCharButtonText: { color: colors.accent, fontWeight: '700', fontSize: 12 },
   secondaryButton: {
     marginTop: spacing.lg,
     alignItems: 'center',

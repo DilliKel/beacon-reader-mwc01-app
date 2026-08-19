@@ -103,6 +103,7 @@ export function useBleScanner() {
                   rawServices: existing?.rawServices ?? null,
                   rawCharacteristics: existing?.rawCharacteristics ?? null,
                   rawReads: existing?.rawReads ?? {},
+                  writeResults: existing?.writeResults ?? {},
                   batteryMv: tlm?.batteryMv ?? existing?.batteryMv ?? null,
                   temperatureC: tlm?.temperatureC ?? existing?.temperatureC ?? null,
                   uptimeSeconds: tlm?.uptimeSeconds ?? existing?.uptimeSeconds ?? null,
@@ -229,6 +230,48 @@ export function useBleScanner() {
     }
   }, []);
 
+  // Escreve bytes numa characteristic específica — ferramenta experimental
+  // pra testar hipóteses de protocolo (ex: senha de conexão, comando de
+  // power off) num serviço proprietário sem documentação oficial. Reconecta
+  // a cada chamada, igual readCharacteristic. USAR COM CUIDADO: escrever no
+  // registro errado pode alterar configuração do crachá sem querer.
+  const writeCharacteristic = useCallback(async (deviceId, serviceUUID, characteristicUUID, bytes) => {
+    const key = `${deviceId}:${characteristicUUID}`;
+    setPendingCharRead(key);
+    try {
+      await BleManager.connect(deviceId);
+      await BleManager.retrieveServices(deviceId);
+      await BleManager.write(deviceId, serviceUUID, characteristicUUID, bytes);
+      setDevicesById((prev) => ({
+        ...prev,
+        [deviceId]: {
+          ...prev[deviceId],
+          writeResults: {
+            ...(prev[deviceId]?.writeResults || {}),
+            [characteristicUUID]: { ok: true, error: null, bytes, writtenAt: Date.now() },
+          },
+        },
+      }));
+      return { ok: true };
+    } catch (err) {
+      const errorMsg = err?.message ?? String(err);
+      setDevicesById((prev) => ({
+        ...prev,
+        [deviceId]: {
+          ...prev[deviceId],
+          writeResults: {
+            ...(prev[deviceId]?.writeResults || {}),
+            [characteristicUUID]: { ok: false, error: errorMsg, bytes, writtenAt: Date.now() },
+          },
+        },
+      }));
+      return { ok: false, error: errorMsg };
+    } finally {
+      BleManager.disconnect(deviceId).catch(() => {});
+      setPendingCharRead(null);
+    }
+  }, []);
+
   // Marca esse MAC como crachá reconhecido — funciona sempre, mesmo se o
   // device não anunciar nome nenhum no BLE (caso do MWC01; o mecanismo
   // antigo baseado em nome ficava mudo/sem efeito nesse caso). Também
@@ -288,6 +331,7 @@ export function useBleScanner() {
     startScan,
     readDeviceDetail,
     readCharacteristic,
+    writeCharacteristic,
     pendingCharRead,
     markAsBadge,
     renameDevice,
