@@ -3,8 +3,15 @@ import { Platform } from 'react-native';
 import BleManager, { BleState } from 'react-native-ble-manager';
 import { requestBlePermissions } from '../ble/permissions';
 import { BATTERY_SERVICE_UUID, BATTERY_LEVEL_CHAR_UUID, shortUuid } from '../ble/uuid';
-import { DEFAULT_BADGE_SIGNATURES, matchesBadgeSignature } from '../ble/badgeSignature';
-import { addBadgeSignature, loadBadgeSignatures, loadNicknames, setNickname } from '../storage/appStorage';
+import { DEFAULT_BADGE_SIGNATURES, isRecognizedBadge } from '../ble/badgeSignature';
+import {
+  addBadgeSignature,
+  addKnownBadgeMac,
+  loadBadgeSignatures,
+  loadKnownBadgeMacs,
+  loadNicknames,
+  setNickname,
+} from '../storage/appStorage';
 import { estimateBatteryPercent, extractEddystoneTlm } from '../ble/eddystoneTlm';
 
 // 12s em vez de 8s: o frame Eddystone-TLM (bateria) não vem em todo
@@ -23,6 +30,7 @@ export function useBleScanner() {
   const [bleState, setBleState] = useState(null);
   const [initError, setInitError] = useState(null);
   const [signatures, setSignatures] = useState(DEFAULT_BADGE_SIGNATURES);
+  const [knownMacs, setKnownMacs] = useState(new Set());
   const [filterMode, setFilterMode] = useState('all'); // 'all' | 'badges'
   const [nicknames, setNicknames] = useState({});
   const startedRef = useRef(false);
@@ -33,13 +41,17 @@ export function useBleScanner() {
 
     (async () => {
       try {
-        const [savedSignatures, savedNicknames] = await Promise.all([
+        const [savedSignatures, savedNicknames, savedMacs] = await Promise.all([
           loadBadgeSignatures(),
           loadNicknames(),
+          loadKnownBadgeMacs(),
         ]);
         if (cancelled) return;
         if (savedSignatures.length > 0) {
           setSignatures((prev) => Array.from(new Set([...prev, ...savedSignatures])));
+        }
+        if (savedMacs.length > 0) {
+          setKnownMacs(new Set(savedMacs));
           setFilterMode('badges');
         }
         setNicknames(savedNicknames);
@@ -217,15 +229,23 @@ export function useBleScanner() {
     }
   }, []);
 
-  // Marca o nome desse device como assinatura de crachá reconhecido,
-  // persistindo pra próximas sessões e ligando o filtro "só crachás".
+  // Marca esse MAC como crachá reconhecido — funciona sempre, mesmo se o
+  // device não anunciar nome nenhum no BLE (caso do MWC01; o mecanismo
+  // antigo baseado em nome ficava mudo/sem efeito nesse caso). Também
+  // aprende o nome como assinatura bônus, se houver.
   const markAsBadge = useCallback(async (device) => {
+    const nextMacs = await addKnownBadgeMac(device.id);
+    setKnownMacs(new Set(nextMacs));
+
     const name = device.name || device.advertising?.localName;
-    if (!name) return;
-    const token = name.trim().toLowerCase().split(/\s+/)[0];
-    if (!token) return;
-    const next = await addBadgeSignature(token);
-    setSignatures((prev) => Array.from(new Set([...prev, ...next])));
+    if (name) {
+      const token = name.trim().toLowerCase().split(/\s+/)[0];
+      if (token) {
+        const nextSignatures = await addBadgeSignature(token);
+        setSignatures((prev) => Array.from(new Set([...prev, ...nextSignatures])));
+      }
+    }
+
     setFilterMode('badges');
   }, []);
 
@@ -241,7 +261,7 @@ export function useBleScanner() {
       const batteryPercentEstimate = estimateBatteryPercent(d.batteryMv);
       return {
         ...d,
-        isKnownBadge: matchesBadgeSignature(d, signatures),
+        isKnownBadge: isRecognizedBadge(d, signatures, knownMacs),
         nickname: nicknames[d.id] || null,
         batteryPercentEstimate,
         // Prioriza um valor exato (se algum dia vier de GATT); na prática
@@ -256,7 +276,7 @@ export function useBleScanner() {
     });
     const filtered = filterMode === 'badges' ? all.filter((d) => d.isKnownBadge) : all;
     return filtered.sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999));
-  }, [devicesById, filterMode, signatures, nicknames]);
+  }, [devicesById, filterMode, signatures, knownMacs, nicknames]);
 
   return {
     devices,

@@ -55,23 +55,24 @@ export default function ScanScreen() {
 
         <View style={styles.headerControls}>
           <FilterToggle value={filterMode} onChange={setFilterMode} />
-          <View style={styles.headerButtons}>
-            <Pressable
-              style={({ pressed }) => [styles.nfcButton, pressed && styles.scanButtonPressed]}
-              onPress={() => setNfcModalVisible(true)}
-            >
-              <Text style={styles.nfcButtonText}>📇 NFC</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.scanButton, pressed && styles.scanButtonPressed]}
-              onPress={startScan}
-              disabled={scanning}
-            >
-              <Text style={styles.scanButtonText}>
-                {scanning ? 'Escaneando…' : 'Escanear'}
-              </Text>
-            </Pressable>
-          </View>
+        </View>
+
+        <View style={styles.headerButtons}>
+          <Pressable
+            style={({ pressed }) => [styles.nfcButton, pressed && styles.scanButtonPressed]}
+            onPress={() => setNfcModalVisible(true)}
+          >
+            <Text style={styles.nfcButtonText}>📇 NFC</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.scanButton, pressed && styles.scanButtonPressed]}
+            onPress={startScan}
+            disabled={scanning}
+          >
+            <Text style={styles.scanButtonText}>
+              {scanning ? 'Escaneando…' : 'Escanear'}
+            </Text>
+          </Pressable>
         </View>
 
         {bluetoothOff && (
@@ -127,11 +128,15 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.subtitle, color: colors.headerSubtitle, marginTop: 4 },
   headerControls: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing.lg,
   },
-  headerButtons: { flexDirection: 'row', gap: spacing.sm },
+  headerButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
   scanButton: {
     backgroundColor: colors.accent,
     paddingHorizontal: spacing.lg,
