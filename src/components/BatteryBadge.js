@@ -9,9 +9,18 @@ const TONE_STYLES = {
   muted: { bg: colors.surfaceMuted, fg: colors.textMuted },
 };
 
-export default function BatteryBadge({ level }) {
+// `battery` é `{ value, exact }` ou null. `exact: false` quer dizer que o
+// valor veio de uma estimativa por voltagem (frame Eddystone-TLM), não de
+// uma leitura de % oficial — mostra com "~" pra deixar isso claro.
+export default function BatteryBadge({ battery }) {
+  const level = battery?.value ?? null;
   const tone = TONE_STYLES[batteryTone(level)];
-  const label = level === null || level === undefined ? 'Bateria: —' : `🔋 ${level}%`;
+  const label =
+    level === null
+      ? 'Bateria: —'
+      : battery.exact
+      ? `🔋 ${level}%`
+      : `🔋 ~${level}%`;
 
   return (
     <View style={[styles.badge, { backgroundColor: tone.bg }]}>

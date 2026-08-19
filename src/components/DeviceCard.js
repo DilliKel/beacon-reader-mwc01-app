@@ -8,10 +8,10 @@ export default function DeviceCard({ device, onPress }) {
   const caption =
     device.status === 'error'
       ? device.errorMsg || 'Falha ao conectar.'
-      : device.status === 'done' && device.hasBatteryService === false
-      ? 'Sem Battery Service padrão — toque para ver detalhes'
       : device.status === 'connecting' || device.status === 'reading'
       ? 'Lendo…'
+      : !device.displayBattery
+      ? 'Bateria ainda não captada — aguarde o scan ou escaneie de novo'
       : 'Toque para configurar';
 
   return (
@@ -28,7 +28,7 @@ export default function DeviceCard({ device, onPress }) {
             {device.nickname ? device.name || device.id : device.id}
           </Text>
         </View>
-        <BatteryBadge level={device.battery} />
+        <BatteryBadge battery={device.displayBattery} />
       </View>
 
       <View style={styles.metaRow}>

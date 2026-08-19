@@ -15,6 +15,15 @@ import { shortUuid } from '../ble/uuid';
 import { formatBytes } from '../ble/bytes';
 import BatteryBadge from './BatteryBadge';
 
+function formatUptime(seconds) {
+  if (seconds === null || seconds === undefined) return null;
+  const totalMinutes = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}min`;
+  return `${hours}h${String(minutes).padStart(2, '0')}min`;
+}
+
 export default function DeviceDetailModal({
   device,
   isKnownBadge,
@@ -93,31 +102,61 @@ export default function DeviceDetailModal({
 
             <Text style={styles.sectionLabel}>Bateria</Text>
             <View style={styles.batteryRow}>
-              <BatteryBadge level={device.battery} />
-              <Pressable
-                style={[styles.primaryButton, isBusy && styles.primaryButtonDisabled]}
-                disabled={isBusy}
-                onPress={() => onReadBattery(device.id)}
-              >
-                {isReadingBattery ? (
-                  <ActivityIndicator size="small" color={colors.surface} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>
-                    {device.status === 'done' ? 'Ler de novo' : 'Ler bateria'}
-                  </Text>
-                )}
-              </Pressable>
+              <BatteryBadge battery={device.displayBattery} />
+              {device.batteryMv && (
+                <Text style={styles.batteryVoltage}>{device.batteryMv} mV</Text>
+              )}
             </View>
+            {device.batteryMv ? (
+              <Text style={styles.helperText}>
+                Captado direto do broadcast (frame Eddystone-TLM padrão da Minew), sem precisar
+                conectar — atualiza sozinho a cada scan. O % é uma estimativa por voltagem
+                (~2.0V vazia, ~3.0V cheia); a voltagem em mV acima é o dado exato.
+              </Text>
+            ) : (
+              <Text style={styles.helperText}>
+                Ainda não captou o frame de telemetria desse crachá — escaneie de novo e deixe
+                a tela de lista aberta por alguns segundos.
+              </Text>
+            )}
+
+            <Pressable
+              style={[styles.linkButton, isBusy && styles.primaryButtonDisabled]}
+              disabled={isBusy}
+              onPress={() => onReadBattery(device.id)}
+            >
+              {isReadingBattery ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text style={styles.linkButtonText}>
+                  Tentar via GATT padrão (avançado, raramente funciona na Minew)
+                </Text>
+              )}
+            </Pressable>
 
             {device.status === 'error' && (
               <Text style={styles.errorText}>{device.errorMsg || 'Falha ao conectar.'}</Text>
             )}
 
+            {(device.temperatureC !== null || device.uptimeSeconds !== null) && (
+              <>
+                <Text style={styles.sectionLabel}>Telemetria</Text>
+                <View style={styles.metaRow}>
+                  {device.temperatureC !== null && device.temperatureC !== undefined && (
+                    <Text style={styles.metaText}>🌡️ {device.temperatureC.toFixed(1)}°C</Text>
+                  )}
+                  {device.uptimeSeconds !== null && device.uptimeSeconds !== undefined && (
+                    <Text style={styles.metaText}>⏱️ ligado há {formatUptime(device.uptimeSeconds)}</Text>
+                  )}
+                </View>
+              </>
+            )}
+
             {showNoBatteryWarning && (
               <Text style={styles.warningText}>
-                Esse crachá conectou, mas não expõe o Battery Service padrão (0x180F/0x2A19).
-                Veja os serviços encontrados abaixo — a bateria real provavelmente está numa
-                characteristic proprietária do firmware Minew.
+                Esse crachá conectou, mas não expõe o Battery Service padrão (0x180F/0x2A19) —
+                normal, a Minew não usa esse padrão. Veja os serviços encontrados abaixo se
+                quiser explorar mais.
               </Text>
             )}
 
@@ -252,17 +291,10 @@ const styles = StyleSheet.create({
   },
   helperText: { ...typography.small, color: colors.textMuted, marginTop: spacing.xs },
   batteryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  primaryButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radii.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    minWidth: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  batteryVoltage: { ...typography.body, color: colors.textSecondary, fontVariant: ['tabular-nums'] },
+  linkButton: { marginTop: spacing.md },
+  linkButtonText: { color: colors.accent, fontSize: 12, fontWeight: '600' },
   primaryButtonDisabled: { opacity: 0.6 },
-  primaryButtonText: { color: colors.surface, fontWeight: '700', fontSize: 14 },
   smallButton: {
     backgroundColor: colors.accent,
     borderRadius: radii.md,

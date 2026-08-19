@@ -5,8 +5,12 @@ import { requestBlePermissions } from '../ble/permissions';
 import { BATTERY_SERVICE_UUID, BATTERY_LEVEL_CHAR_UUID, shortUuid } from '../ble/uuid';
 import { DEFAULT_BADGE_SIGNATURES, matchesBadgeSignature } from '../ble/badgeSignature';
 import { addBadgeSignature, loadBadgeSignatures, loadNicknames, setNickname } from '../storage/appStorage';
+import { estimateBatteryPercent, extractEddystoneTlm } from '../ble/eddystoneTlm';
 
-const SCAN_SECONDS = 8;
+// 12s em vez de 8s: o frame Eddystone-TLM (bateria) não vem em todo
+// advertising, os beacons revezam entre frames — precisa de uma janela um
+// pouco maior pra ter boa chance de capturar um TLM de cada crachá por perto.
+const SCAN_SECONDS = 12;
 
 // Toda a lógica de BLE mora aqui — a tela só consome estado e chama ações.
 // Fluxo: init() pede permissão, sobe o BleManager e assina os eventos de scan;
@@ -59,6 +63,13 @@ export function useBleScanner() {
 
         subscriptions.push(
           BleManager.onDiscoverPeripheral((peripheral) => {
+            // A Minew manda a bateria real no próprio advertising (frame
+            // Eddystone-TLM), sem precisar conectar. Só chega de vez em
+            // quando (o beacon revezaria entre frames), então preserva o
+            // último valor visto em vez de apagar quando esse pacote
+            // específico não trouxer um TLM novo.
+            const tlm = extractEddystoneTlm(peripheral.advertising);
+
             setDevicesById((prev) => {
               const existing = prev[peripheral.id];
               return {
@@ -80,6 +91,9 @@ export function useBleScanner() {
                   rawServices: existing?.rawServices ?? null,
                   rawCharacteristics: existing?.rawCharacteristics ?? null,
                   rawReads: existing?.rawReads ?? {},
+                  batteryMv: tlm?.batteryMv ?? existing?.batteryMv ?? null,
+                  temperatureC: tlm?.temperatureC ?? existing?.temperatureC ?? null,
+                  uptimeSeconds: tlm?.uptimeSeconds ?? existing?.uptimeSeconds ?? null,
                 },
               };
             });
@@ -223,11 +237,23 @@ export function useBleScanner() {
   }, []);
 
   const devices = useMemo(() => {
-    const all = Object.values(devicesById).map((d) => ({
-      ...d,
-      isKnownBadge: matchesBadgeSignature(d, signatures),
-      nickname: nicknames[d.id] || null,
-    }));
+    const all = Object.values(devicesById).map((d) => {
+      const batteryPercentEstimate = estimateBatteryPercent(d.batteryMv);
+      return {
+        ...d,
+        isKnownBadge: matchesBadgeSignature(d, signatures),
+        nickname: nicknames[d.id] || null,
+        batteryPercentEstimate,
+        // Prioriza um valor exato (se algum dia vier de GATT); na prática
+        // pro MWC01 quem preenche isso é sempre a estimativa por voltagem.
+        displayBattery:
+          d.battery !== null && d.battery !== undefined
+            ? { value: d.battery, exact: true }
+            : batteryPercentEstimate !== null
+            ? { value: batteryPercentEstimate, exact: false }
+            : null,
+      };
+    });
     const filtered = filterMode === 'badges' ? all.filter((d) => d.isKnownBadge) : all;
     return filtered.sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999));
   }, [devicesById, filterMode, signatures, nicknames]);
