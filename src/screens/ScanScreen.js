@@ -15,6 +15,8 @@ import DeviceCard from '../components/DeviceCard';
 import DeviceDetailModal from '../components/DeviceDetailModal';
 import EmptyState from '../components/EmptyState';
 import FilterToggle from '../components/FilterToggle';
+import NfcReadModal from '../components/NfcReadModal';
+import { normalizeIdForComparison } from '../nfc/nfcManager';
 
 const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
@@ -35,9 +37,15 @@ export default function ScanScreen() {
   } = useBleScanner();
 
   const [selectedId, setSelectedId] = useState(null);
+  const [nfcModalVisible, setNfcModalVisible] = useState(false);
   const selectedDevice = devices.find((d) => d.id === selectedId) || null;
 
   const bluetoothOff = bleState === BleState.Off;
+
+  // Compara o UID lido por NFC com os MACs já vistos no scan BLE, ignorando
+  // separadores/caixa — usado pra "pular" direto pro crachá certo.
+  const findDeviceByNormalizedId = (normalizedId) =>
+    devices.find((d) => normalizeIdForComparison(d.id) === normalizedId) || null;
 
   return (
     <View style={styles.screen}>
@@ -47,15 +55,23 @@ export default function ScanScreen() {
 
         <View style={styles.headerControls}>
           <FilterToggle value={filterMode} onChange={setFilterMode} />
-          <Pressable
-            style={({ pressed }) => [styles.scanButton, pressed && styles.scanButtonPressed]}
-            onPress={startScan}
-            disabled={scanning}
-          >
-            <Text style={styles.scanButtonText}>
-              {scanning ? 'Escaneando…' : 'Escanear'}
-            </Text>
-          </Pressable>
+          <View style={styles.headerButtons}>
+            <Pressable
+              style={({ pressed }) => [styles.nfcButton, pressed && styles.scanButtonPressed]}
+              onPress={() => setNfcModalVisible(true)}
+            >
+              <Text style={styles.nfcButtonText}>📇 NFC</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.scanButton, pressed && styles.scanButtonPressed]}
+              onPress={startScan}
+              disabled={scanning}
+            >
+              <Text style={styles.scanButtonText}>
+                {scanning ? 'Escaneando…' : 'Escanear'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {bluetoothOff && (
@@ -81,6 +97,13 @@ export default function ScanScreen() {
         pendingCharRead={pendingCharRead}
         onMarkAsBadge={markAsBadge}
         onSaveNickname={renameDevice}
+      />
+
+      <NfcReadModal
+        visible={nfcModalVisible}
+        onClose={() => setNfcModalVisible(false)}
+        matchDeviceById={findDeviceByNormalizedId}
+        onOpenDevice={(device) => setSelectedId(device.id)}
       />
     </View>
   );
@@ -108,6 +131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.lg,
   },
+  headerButtons: { flexDirection: 'row', gap: spacing.sm },
   scanButton: {
     backgroundColor: colors.accent,
     paddingHorizontal: spacing.lg,
@@ -116,6 +140,13 @@ const styles = StyleSheet.create({
   },
   scanButtonPressed: { opacity: 0.85 },
   scanButtonText: { color: colors.surface, fontWeight: '700', fontSize: 14 },
+  nfcButton: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 999,
+  },
+  nfcButtonText: { color: colors.surface, fontWeight: '700', fontSize: 14 },
   warningText: {
     color: '#FCA5A5',
     fontSize: 12,

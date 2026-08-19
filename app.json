@@ -34,6 +34,12 @@
           "neverForLocation": true,
           "bluetoothAlwaysPermission": "Permitir que o Beacon Reader se conecte aos crachás MWC01 por Bluetooth"
         }
+      ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Permitir que o Beacon Reader leia a tag NFC dos crachás MWC01"
+        }
       ]
     ],
     "extra": {
