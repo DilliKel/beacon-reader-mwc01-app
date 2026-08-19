@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Beacon Reader MWC01",
+    "slug": "beacon-reader-mwc01",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.kelvin.beaconreadermwc01",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "react-native-ble-manager",
+        {
+          "isBleRequired": true,
+          "neverForLocation": true,
+          "bluetoothAlwaysPermission": "Permitir que o Beacon Reader se conecte aos crachás MWC01 por Bluetooth"
+        }
+      ]
+    ]
+  }
+}

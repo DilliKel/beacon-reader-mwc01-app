@@ -1,0 +1,21 @@
+{
+  "name": "beacon-reader-mwc01-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.1.1",
+    "expo": "~57.0.14",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-ble-manager": "^12.5.1"
+  },
+  "scripts": {
+    "start": "node node_modules/expo/bin/cli start",
+    "android": "node node_modules/expo/bin/cli run:android",
+    "ios": "node node_modules/expo/bin/cli run:ios",
+    "web": "node node_modules/expo/bin/cli start --web",
+    "prebuild": "node node_modules/expo/bin/cli prebuild"
+  },
+  "private": true
+}
