@@ -40,21 +40,28 @@ múltiplos usuários, backend, integração com sistemas externos.
 ## Como rodar
 
 Esse app usa um módulo nativo de Bluetooth, então **o Expo Go não funciona** — é
-preciso gerar um build de desenvolvimento:
+preciso instalar um build próprio no celular. Duas formas:
+
+### Opção A — build na nuvem (EAS), sem instalar nada de Android localmente
 
 ```bash
 npm install
-
-# gera as pastas nativas (android/ e ios/) a partir da config do app.json
-npm run prebuild
-
-# compila e instala num Android conectado via USB (ou emulador)
-npm run android
+npm run eas:login          # login na conta Expo (grátis) pelo navegador
+npm run build:android      # builda um APK na nuvem
 ```
 
-Isso exige o Android SDK instalado (via Android Studio, ou as command line tools). Sem
-isso localmente, dá pra usar `eas build --profile development --platform android`
-(build na nuvem da Expo, precisa de conta gratuita).
+Ao final, o terminal mostra um link/QR code — abra no celular (ou baixe o `.apk`
+direto) e instale. Não precisa de cabo USB nem de Android Studio.
+
+### Opção B — build local via USB
+
+Exige Android SDK instalado (Android Studio, ou as command line tools):
+
+```bash
+npm install
+npm run prebuild   # gera android/ e ios/ a partir da config do app.json
+npm run android     # compila e instala no Android conectado via USB
+```
 
 ## Estrutura
 

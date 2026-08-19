@@ -15,7 +15,14 @@
     "android": "node node_modules/expo/bin/cli run:android",
     "ios": "node node_modules/expo/bin/cli run:ios",
     "web": "node node_modules/expo/bin/cli start --web",
-    "prebuild": "node node_modules/expo/bin/cli prebuild"
+    "prebuild": "node node_modules/expo/bin/cli prebuild",
+    "eas": "node node_modules/eas-cli/bin/run",
+    "eas:login": "node node_modules/eas-cli/bin/run login",
+    "eas:whoami": "node node_modules/eas-cli/bin/run whoami",
+    "build:android": "node node_modules/eas-cli/bin/run build --platform android --profile preview"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "eas-cli": "^22.0.0"
+  }
 }
