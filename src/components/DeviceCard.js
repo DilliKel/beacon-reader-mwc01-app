@@ -1,21 +1,31 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radii, spacing, typography } from '../theme';
 import { formatDistance } from '../ble/distance';
 import BatteryBadge from './BatteryBadge';
 
-export default function DeviceCard({ device, isKnownBadge, onReadBattery, onMarkAsBadge }) {
-  const isBusy = device.status === 'connecting' || device.status === 'reading';
+export default function DeviceCard({ device, onPress }) {
+  const caption =
+    device.status === 'error'
+      ? device.errorMsg || 'Falha ao conectar.'
+      : device.status === 'done' && device.hasBatteryService === false
+      ? 'Sem Battery Service padrão — toque para ver detalhes'
+      : device.status === 'connecting' || device.status === 'reading'
+      ? 'Lendo…'
+      : 'Toque para configurar';
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => onPress(device)}
+    >
       <View style={styles.headerRow}>
         <View style={styles.titleBlock}>
           <Text style={styles.name} numberOfLines={1}>
-            {device.name || 'Dispositivo sem nome'}
+            {device.nickname || device.name || 'Dispositivo sem nome'}
           </Text>
           <Text style={styles.mac} numberOfLines={1}>
-            {device.id}
+            {device.nickname ? device.name || device.id : device.id}
           </Text>
         </View>
         <BatteryBadge level={device.battery} />
@@ -26,38 +36,13 @@ export default function DeviceCard({ device, isKnownBadge, onReadBattery, onMark
         <Text style={styles.metaText}>📏 {formatDistance(device.rssi)}</Text>
       </View>
 
-      {device.status === 'error' && (
-        <Text style={styles.errorText} numberOfLines={2}>
-          {device.errorMsg || 'Falha ao conectar.'}
-        </Text>
-      )}
-
-      <View style={styles.actionsRow}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryButton,
-            isBusy && styles.primaryButtonDisabled,
-            pressed && !isBusy && styles.primaryButtonPressed,
-          ]}
-          disabled={isBusy}
-          onPress={() => onReadBattery(device.id)}
-        >
-          {isBusy ? (
-            <ActivityIndicator size="small" color={colors.surface} />
-          ) : (
-            <Text style={styles.primaryButtonText}>
-              {device.status === 'done' ? 'Ler de novo' : 'Ler bateria'}
-            </Text>
-          )}
-        </Pressable>
-
-        {!isKnownBadge && (
-          <Pressable style={styles.secondaryButton} onPress={() => onMarkAsBadge(device)}>
-            <Text style={styles.secondaryButtonText}>Marcar como crachá</Text>
-          </Pressable>
-        )}
-      </View>
-    </View>
+      <Text
+        style={[styles.caption, device.status === 'error' && styles.captionError]}
+        numberOfLines={2}
+      >
+        {caption}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -70,6 +55,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.md,
   },
+  cardPressed: { opacity: 0.85 },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -88,29 +74,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   metaText: { ...typography.body, color: colors.textSecondary },
-  errorText: {
+  caption: {
     ...typography.small,
-    color: colors.danger,
+    color: colors.textMuted,
     marginTop: spacing.sm,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  primaryButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radii.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    minWidth: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonPressed: { opacity: 0.85 },
-  primaryButtonDisabled: { opacity: 0.6 },
-  primaryButtonText: { color: colors.surface, fontWeight: '700', fontSize: 14 },
-  secondaryButton: { paddingVertical: spacing.sm },
-  secondaryButtonText: { color: colors.accent, fontWeight: '600', fontSize: 13 },
+  captionError: { color: colors.danger },
 });

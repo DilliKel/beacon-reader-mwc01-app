@@ -4,7 +4,7 @@ import BleManager, { BleState } from 'react-native-ble-manager';
 import { requestBlePermissions } from '../ble/permissions';
 import { BATTERY_SERVICE_UUID, BATTERY_LEVEL_CHAR_UUID, shortUuid } from '../ble/uuid';
 import { DEFAULT_BADGE_SIGNATURES, matchesBadgeSignature } from '../ble/badgeSignature';
-import { addBadgeSignature, loadBadgeSignatures } from '../storage/appStorage';
+import { addBadgeSignature, loadBadgeSignatures, loadNicknames, setNickname } from '../storage/appStorage';
 
 const SCAN_SECONDS = 8;
 
@@ -20,6 +20,7 @@ export function useBleScanner() {
   const [initError, setInitError] = useState(null);
   const [signatures, setSignatures] = useState(DEFAULT_BADGE_SIGNATURES);
   const [filterMode, setFilterMode] = useState('all'); // 'all' | 'badges'
+  const [nicknames, setNicknames] = useState({});
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -28,12 +29,16 @@ export function useBleScanner() {
 
     (async () => {
       try {
-        const savedSignatures = await loadBadgeSignatures();
+        const [savedSignatures, savedNicknames] = await Promise.all([
+          loadBadgeSignatures(),
+          loadNicknames(),
+        ]);
         if (cancelled) return;
         if (savedSignatures.length > 0) {
           setSignatures((prev) => Array.from(new Set([...prev, ...savedSignatures])));
           setFilterMode('badges');
         }
+        setNicknames(savedNicknames);
 
         const permission = await requestBlePermissions();
         if (cancelled) return;
@@ -72,6 +77,8 @@ export function useBleScanner() {
                   battery: existing?.battery ?? null,
                   hasBatteryService: existing?.hasBatteryService ?? null,
                   errorMsg: existing?.errorMsg ?? null,
+                  rawServices: existing?.rawServices ?? null,
+                  rawCharacteristics: existing?.rawCharacteristics ?? null,
                 },
               };
             });
@@ -108,6 +115,9 @@ export function useBleScanner() {
 
   // Conecta num crachá específico, lê a bateria (Battery Service padrão BLE)
   // e desconecta em seguida — não fica com a conexão presa depois de ler.
+  // Guarda também a lista crua de services/characteristics encontrados: quando
+  // o crachá não expõe o Battery Service padrão (muito comum em firmware
+  // proprietário), isso é o que permite descobrir onde a bateria real mora.
   const readDeviceDetail = useCallback(async (id) => {
     setDevicesById((prev) => ({
       ...prev,
@@ -137,6 +147,8 @@ export function useBleScanner() {
           status: 'done',
           battery,
           hasBatteryService: Boolean(batteryChar),
+          rawServices: info.services ?? [],
+          rawCharacteristics: info.characteristics ?? [],
         },
       }));
     } catch (err) {
@@ -161,14 +173,22 @@ export function useBleScanner() {
     setFilterMode('badges');
   }, []);
 
+  // Salva um apelido local pro crachá (ex: "Capacete 12 - João"), persistido
+  // por MAC, pra identificar fácil quem é quem depois de colar uma etiqueta nele.
+  const renameDevice = useCallback(async (id, nickname) => {
+    const next = await setNickname(id, nickname);
+    setNicknames(next);
+  }, []);
+
   const devices = useMemo(() => {
     const all = Object.values(devicesById).map((d) => ({
       ...d,
       isKnownBadge: matchesBadgeSignature(d, signatures),
+      nickname: nicknames[d.id] || null,
     }));
     const filtered = filterMode === 'badges' ? all.filter((d) => d.isKnownBadge) : all;
     return filtered.sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999));
-  }, [devicesById, filterMode, signatures]);
+  }, [devicesById, filterMode, signatures, nicknames]);
 
   return {
     devices,
@@ -180,5 +200,6 @@ export function useBleScanner() {
     startScan,
     readDeviceDetail,
     markAsBadge,
+    renameDevice,
   };
 }

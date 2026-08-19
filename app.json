@@ -16,7 +16,12 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +35,11 @@
           "bluetoothAlwaysPermission": "Permitir que o Beacon Reader se conecte aos crachás MWC01 por Bluetooth"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4daecce3-222e-4b57-a71d-5dc95018c3a2"
+      }
+    }
   }
 }

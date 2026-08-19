@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FlatList,
   Platform,
@@ -12,6 +12,7 @@ import { BleState } from 'react-native-ble-manager';
 import { colors, spacing, typography } from '../theme';
 import { useBleScanner } from '../hooks/useBleScanner';
 import DeviceCard from '../components/DeviceCard';
+import DeviceDetailModal from '../components/DeviceDetailModal';
 import EmptyState from '../components/EmptyState';
 import FilterToggle from '../components/FilterToggle';
 
@@ -28,7 +29,11 @@ export default function ScanScreen() {
     startScan,
     readDeviceDetail,
     markAsBadge,
+    renameDevice,
   } = useBleScanner();
+
+  const [selectedId, setSelectedId] = useState(null);
+  const selectedDevice = devices.find((d) => d.id === selectedId) || null;
 
   const bluetoothOff = bleState === BleState.Off;
 
@@ -61,15 +66,17 @@ export default function ScanScreen() {
         contentContainerStyle={styles.listContent}
         data={devices}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <DeviceCard
-            device={item}
-            isKnownBadge={item.isKnownBadge}
-            onReadBattery={readDeviceDetail}
-            onMarkAsBadge={markAsBadge}
-          />
-        )}
+        renderItem={({ item }) => <DeviceCard device={item} onPress={() => setSelectedId(item.id)} />}
         ListEmptyComponent={<EmptyState scanning={scanning} filterMode={filterMode} />}
+      />
+
+      <DeviceDetailModal
+        device={selectedDevice}
+        isKnownBadge={selectedDevice?.isKnownBadge}
+        onClose={() => setSelectedId(null)}
+        onReadBattery={readDeviceDetail}
+        onMarkAsBadge={markAsBadge}
+        onSaveNickname={renameDevice}
       />
     </View>
   );
