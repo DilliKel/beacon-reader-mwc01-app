@@ -160,6 +160,57 @@ export default function DeviceDetailModal({
               </Text>
             )}
 
+            <Text style={styles.sectionLabel}>Advertising bruto (broadcast, sem conectar)</Text>
+            <View style={styles.serviceBlock}>
+              <Text style={styles.charLine}>
+                nome: {device.advertising?.localName || '—'} · conectável:{' '}
+                {String(device.advertising?.isConnectable ?? '—')} · txPower:{' '}
+                {device.advertising?.txPowerLevel ?? '—'}
+              </Text>
+              <Text style={styles.charLine}>
+                serviceUUIDs: {device.advertising?.serviceUUIDs?.map(shortUuid).join(', ') || '(nenhum)'}
+              </Text>
+
+              <Text style={[styles.charLine, { marginTop: spacing.sm, fontWeight: '700' }]}>
+                serviceData
+              </Text>
+              {device.advertising?.serviceData &&
+              Object.keys(device.advertising.serviceData).length > 0 ? (
+                Object.entries(device.advertising.serviceData).map(([key, val]) => (
+                  <Text key={key} style={styles.charResult}>
+                    {shortUuid(key)}: hex {formatBytes(val?.bytes).hex}
+                  </Text>
+                ))
+              ) : (
+                <Text style={styles.charLine}>(vazio)</Text>
+              )}
+
+              <Text style={[styles.charLine, { marginTop: spacing.sm, fontWeight: '700' }]}>
+                manufacturerData
+              </Text>
+              {device.advertising?.manufacturerData &&
+              Object.keys(device.advertising.manufacturerData).length > 0 ? (
+                Object.entries(device.advertising.manufacturerData).map(([key, val]) => (
+                  <Text key={key} style={styles.charResult}>
+                    {key}: hex {formatBytes(val?.bytes).hex}
+                  </Text>
+                ))
+              ) : (
+                <Text style={styles.charLine}>(vazio)</Text>
+              )}
+
+              {device.advertising?.manufacturerRawData && (
+                <>
+                  <Text style={[styles.charLine, { marginTop: spacing.sm, fontWeight: '700' }]}>
+                    manufacturerRawData
+                  </Text>
+                  <Text style={styles.charResult}>
+                    hex {formatBytes(device.advertising.manufacturerRawData.bytes).hex}
+                  </Text>
+                </>
+              )}
+            </View>
+
             {device.rawServices && device.rawServices.length > 0 && (
               <>
                 <Text style={styles.sectionLabel}>
