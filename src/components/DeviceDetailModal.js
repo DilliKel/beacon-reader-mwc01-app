@@ -43,6 +43,16 @@ export default function DeviceDetailModal({
     setNicknameDraft(device?.nickname || '');
   }, [device?.id]);
 
+  // Carrega os services/characteristics GATT sozinho ao abrir o crachá —
+  // antes só populava depois de tocar manualmente em "Tentar via GATT
+  // padrão", o que não era óbvio. Só dispara se ainda não tiver o resultado
+  // desse device (não refaz a cada abertura do mesmo crachá).
+  useEffect(() => {
+    if (!device?.id || device.rawServices || device.status !== 'idle') return;
+    onReadBattery(device.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [device?.id]);
+
   if (!device) return null;
 
   const isReadingBattery = device.status === 'connecting' || device.status === 'reading';
@@ -131,7 +141,7 @@ export default function DeviceDetailModal({
                 <ActivityIndicator size="small" color={colors.accent} />
               ) : (
                 <Text style={styles.linkButtonText}>
-                  Tentar via GATT padrão (avançado, raramente funciona na Minew)
+                  {device.rawServices ? 'Recarregar serviços GATT' : 'Carregar serviços GATT'}
                 </Text>
               )}
             </Pressable>
@@ -212,6 +222,13 @@ export default function DeviceDetailModal({
                 </>
               )}
             </View>
+
+            {!device.rawServices && isReadingBattery && (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <Text style={styles.helperText}>Carregando serviços GATT…</Text>
+              </View>
+            )}
 
             {device.rawServices && device.rawServices.length > 0 && (
               <>
@@ -312,6 +329,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   helperText: { ...typography.small, color: colors.textMuted, marginTop: spacing.xs },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
   batteryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   batteryVoltage: { ...typography.body, color: colors.textSecondary, fontVariant: ['tabular-nums'] },
   linkButton: { marginTop: spacing.md },
